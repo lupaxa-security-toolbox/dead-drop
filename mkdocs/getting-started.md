@@ -5,7 +5,7 @@ Dead Drop needs Python 3.11 or newer on macOS, Linux, or Windows. It does not do
 ## Install
 
 ```bash
-pip install dead-drop
+pip install lupaxa-dead-drop
 ```
 
 From a checkout:

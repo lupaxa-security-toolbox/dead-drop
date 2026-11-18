@@ -17,7 +17,7 @@ Erasure coding and secret sharing do not authenticate a payload. Each command re
 Python 3.11 or newer:
 
 ```bash
-pip install dead-drop
+pip install lupaxa-dead-drop
 ```
 
 From a checkout:

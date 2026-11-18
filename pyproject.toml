@@ -3,7 +3,7 @@ requires = ["hatchling>=1.18"]
 build-backend = "hatchling.build"
 
 [project]
-name = "dead-drop"
+name = "lupaxa-dead-drop"
 dynamic = ["version"]
 description = "Offline laboratory for concealing, encrypting, distributing, analysing, and recovering data in ordinary carrier files, including a carrier-backed encrypted filesystem."
 readme = "README.md"
