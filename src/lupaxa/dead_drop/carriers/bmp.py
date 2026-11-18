@@ -19,7 +19,7 @@ class Bmp:
     def __init__(self, data: bytes) -> None:
         if len(data) < 54 or data[:2] != b"BM":
             raise UnsupportedError("File is not a BMP.")
-        _size, _reserved_a, _reserved_b, self.offset = struct.unpack_from("<IHH I", data, 2)
+        self.offset = struct.unpack_from("<I", data, 10)[0]
         dib_size, width, height, planes, bit_count, compression = struct.unpack_from("<IiiHHI", data, 14)
         if dib_size < 40 or planes != 1 or compression != 0 or bit_count not in {24, 32}:
             raise UnsupportedError("Only uncompressed 24-bit and 32-bit BMP files are supported.")

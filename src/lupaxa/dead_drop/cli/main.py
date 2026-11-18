@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -28,7 +29,7 @@ from lupaxa.dead_drop.config import load_config
 from lupaxa.dead_drop.crypto.kdf import KdfParams
 from lupaxa.dead_drop.crypto.keys import prompt_password, read_password_file, write_key_file
 from lupaxa.dead_drop.crypto.shamir import combine_shares, parse_share, split_secret
-from lupaxa.dead_drop.errors import DeadDropError, PartialBatchError
+from lupaxa.dead_drop.errors import DeadDropError
 from lupaxa.dead_drop.history import read_history, record_history
 from lupaxa.dead_drop.laboratory import analyse as analyse_file
 from lupaxa.dead_drop.laboratory import (
@@ -116,6 +117,8 @@ class State:
         self.jobs = 1
         self.config_path: Path | None = None
         self.profile: str | None = None
+        self.no_colour = False
+        self.temp_dir: Path | None = None
 
 
 def _state(ctx: typer.Context) -> State:
@@ -199,10 +202,15 @@ def main_callback(
     state.jobs = jobs
     state.config_path = config
     state.profile = profile
+    state.no_colour = no_colour
+    state.temp_dir = temp_dir
     ctx.obj = state
+    if no_colour:
+        os.environ["NO_COLOR"] = "1"
+    if temp_dir is not None:
+        os.environ["TMPDIR"] = str(temp_dir)
     level = 10 if debug else 20 if verbose else 40 if quiet else 30
     configure_logging(level)
-    del no_colour, temp_dir
 
 
 @app.command()
@@ -1317,9 +1325,6 @@ def main(argv: list[str] | None = None) -> int:
     try:
         app(args=argv, standalone_mode=False)
     except DeadDropError as exc:
-        typer.echo(str(exc), err=True)
-        return exc.exit_code
-    except PartialBatchError as exc:
         typer.echo(str(exc), err=True)
         return exc.exit_code
     except SystemExit as exc:

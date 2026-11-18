@@ -398,11 +398,6 @@ def _attach_shards(state: dict[str, Any], group: list[dict[str, Any]]) -> None:
                 block["shards"][shard["index"]] = carrier["carrier_id"]
 
 
-def _restore_shard_bytes(state: dict[str, Any], shards: list[tuple[int, bytes]]) -> None:
-    """Merge shard bytes after each carrier has been scanned."""
-    del state, shards
-
-
 def _dump_state(state: dict[str, Any], master: bytes, settings: VaultSettings, limits: Limits) -> bytes:
     public = json.loads(json.dumps(_public_state(state)))
     return build_envelope(
