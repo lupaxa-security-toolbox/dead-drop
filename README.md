@@ -26,7 +26,7 @@ From a checkout:
 pip install -e ".[dev]"
 ```
 
-The command is `dead-drop`. It does not use the network.
+The command is `dead-drop`. The import path is `lupaxa.dead_drop`. `lupaxa` is a namespace package — there is no `lupaxa/__init__.py`. It does not use the network.
 
 ## Quick Start
 
