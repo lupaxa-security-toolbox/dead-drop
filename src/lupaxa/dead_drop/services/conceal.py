@@ -21,22 +21,11 @@ from lupaxa.dead_drop.crypto.keys import key_from_password, read_key_file
 from lupaxa.dead_drop.crypto.shamir import Share, combine_shares, parse_share, split_secret
 from lupaxa.dead_drop.errors import AuthenticationError, CapacityError, DeadDropError, FragmentError, IntegrityError
 from lupaxa.dead_drop.limits import Limits
-from lupaxa.dead_drop.payload.envelope import (
-    TYPE_FRAGMENT,
-    TYPE_KEY_SHARE,
-    TYPE_SINGLE,
-    Envelope,
-    build_envelope,
-    pack_frames,
-    parse_envelope,
-    walk_frames,
-)
+from lupaxa.dead_drop.payload.envelope import TYPE_FRAGMENT, TYPE_KEY_SHARE, TYPE_SINGLE, Envelope, build_envelope, pack_frames, parse_envelope, walk_frames
 from lupaxa.dead_drop.payload.package import compress, decompress, new_id, package_bytes, package_path, unpack_package
 from lupaxa.dead_drop.redact import register_secret
 
-TEXT_WARNING = (
-    "Text concealment is vulnerable to formatting, Unicode normalisation, copying, and editor transformations."
-)
+TEXT_WARNING = "Text concealment is vulnerable to formatting, Unicode normalisation, copying, and editor transformations."
 
 
 @dataclass
@@ -94,21 +83,13 @@ def _salt(choices: CryptoChoices) -> bytes:
     return os.urandom(16)
 
 
-def seal(
-    package: bytes, choices: CryptoChoices, limits: Limits, *, payload_id: bytes | None = None
-) -> tuple[bytes, bytes]:
+def seal(package: bytes, choices: CryptoChoices, limits: Limits, *, payload_id: bytes | None = None) -> tuple[bytes, bytes]:
     """Compress and encrypt a package into one envelope. Returns envelope bytes and payload id."""
     compressed, method = compress(package, choices.compress, limit=limits.max_archive_expansion_bytes)
     identifier = payload_id or new_id()
     if not choices.encrypt:
         blob = build_envelope(
-            envelope_type=TYPE_SINGLE,
-            algorithm_id=0,
-            payload_id=identifier,
-            plaintext=compressed,
-            compression_id=method,
-            encryption="none",
-            max_plain_bytes=limits.max_archive_expansion_bytes,
+            envelope_type=TYPE_SINGLE, algorithm_id=0, payload_id=identifier, plaintext=compressed, compression_id=method, encryption="none", max_plain_bytes=limits.max_archive_expansion_bytes
         )
         return blob, identifier
     algorithm = normalise_algorithm(choices.algorithm)
@@ -238,12 +219,7 @@ def reassemble(envelopes: list[Envelope], limits: Limits) -> bytes:
     length = data_shards * len(present[0])
     # The original envelope length is not stored separately. Decode using the padded length
     # and trim at the first valid envelope by trying the decoded buffer.
-    decoded = rs_decode(
-        shards,
-        data_shards=data_shards,
-        parity_shards=parity_shards,
-        payload_length=length,
-    )
+    decoded = rs_decode(shards, data_shards=data_shards, parity_shards=parity_shards, payload_length=length)
     return _trim_envelope(decoded)
 
 
@@ -263,16 +239,7 @@ def _reserialise(envelope: Envelope) -> bytes:
     raise FragmentError("Single envelopes must be passed through as raw bytes.")
 
 
-def hide_into(
-    carrier: Path,
-    output: Path,
-    package: bytes,
-    *,
-    choices: CryptoChoices,
-    options: EmbedOptions,
-    limits: Limits,
-    algorithm: str = "auto",
-) -> dict[str, Any]:
+def hide_into(carrier: Path, output: Path, package: bytes, *, choices: CryptoChoices, options: EmbedOptions, limits: Limits, algorithm: str = "auto") -> dict[str, Any]:
     """Embed one sealed payload and verify that it extracts."""
     blob, payload_id = seal(package, choices, limits)
     report = embed(carrier, output, blob, algorithm, options, limits)
@@ -303,15 +270,7 @@ def hide_into(
     }
 
 
-def reveal_from(
-    carrier: Path,
-    *,
-    choices: CryptoChoices,
-    options: EmbedOptions,
-    limits: Limits,
-    algorithm: str = "auto",
-    destination: Path | None = None,
-) -> dict[str, Any]:
+def reveal_from(carrier: Path, *, choices: CryptoChoices, options: EmbedOptions, limits: Limits, algorithm: str = "auto", destination: Path | None = None) -> dict[str, Any]:
     """Extract, authenticate, and optionally unpack one carrier."""
     blob = extract(carrier, algorithm, options, limits)
     package = open_envelope(blob, choices, limits)
@@ -328,15 +287,7 @@ def reveal_from(
 
 
 def distribute(
-    carriers: list[Path],
-    outputs: list[Path],
-    package: bytes,
-    *,
-    choices: CryptoChoices,
-    distribution: DistributionChoices,
-    options: EmbedOptions,
-    limits: Limits,
-    algorithm: str = "auto",
+    carriers: list[Path], outputs: list[Path], package: bytes, *, choices: CryptoChoices, distribution: DistributionChoices, options: EmbedOptions, limits: Limits, algorithm: str = "auto"
 ) -> dict[str, Any]:
     """Spread a payload across carriers and verify reconstruction from the outputs."""
     if len(carriers) != len(outputs):
@@ -349,13 +300,7 @@ def distribute(
         if choices.key is None:
             secret = os.urandom(32)
             # Re-seal with this random key so the password is not required for the data key.
-            choices = CryptoChoices(
-                encrypt=True,
-                algorithm=choices.algorithm,
-                key=secret,
-                compress=choices.compress,
-                kdf=choices.kdf,
-            )
+            choices = CryptoChoices(encrypt=True, algorithm=choices.algorithm, key=secret, compress=choices.compress, kdf=choices.kdf)
             blob, payload_id = seal(package, choices, limits, payload_id=payload_id)
             pieces = fragment_blob(blob, payload_id, distribution, limits)
         else:
@@ -363,14 +308,7 @@ def distribute(
         shares = split_secret(secret, shares=distribution.shares, threshold=distribution.threshold)
         for share in shares:
             share_blobs.append(
-                build_envelope(
-                    envelope_type=TYPE_KEY_SHARE,
-                    algorithm_id=0,
-                    payload_id=payload_id,
-                    plaintext=share.serialise(),
-                    encryption="none",
-                    max_plain_bytes=limits.max_input_bytes,
-                )
+                build_envelope(envelope_type=TYPE_KEY_SHARE, algorithm_id=0, payload_id=payload_id, plaintext=share.serialise(), encryption="none", max_plain_bytes=limits.max_input_bytes)
             )
     if len(pieces) > len(carriers):
         raise CapacityError(f"Need {len(pieces)} carriers and only {len(carriers)} were selected.")
@@ -403,14 +341,7 @@ def distribute(
     }
 
 
-def recover_from(
-    carriers: list[Path],
-    *,
-    choices: CryptoChoices,
-    options: EmbedOptions,
-    limits: Limits,
-    algorithm: str = "auto",
-) -> dict[str, Any]:
+def recover_from(carriers: list[Path], *, choices: CryptoChoices, options: EmbedOptions, limits: Limits, algorithm: str = "auto") -> dict[str, Any]:
     """Scan carriers, group fragments, reconstruct, and authenticate."""
     found: list[Envelope] = []
     raw_singles: list[bytes] = []
@@ -438,20 +369,8 @@ def recover_from(
                 raw_singles.append(piece)
             else:
                 found.append(envelope)
-    if (
-        shares
-        and choices.key is None
-        and not choices.password
-        and len({share.set_id for share in shares}) == 1
-        and len(shares) >= shares[0].threshold
-    ):
-        choices = CryptoChoices(
-            encrypt=True,
-            algorithm=choices.algorithm,
-            key=combine_shares(shares),
-            compress=choices.compress,
-            kdf=choices.kdf,
-        )
+    if shares and choices.key is None and not choices.password and len({share.set_id for share in shares}) == 1 and len(shares) >= shares[0].threshold:
+        choices = CryptoChoices(encrypt=True, algorithm=choices.algorithm, key=combine_shares(shares), compress=choices.compress, kdf=choices.kdf)
     if raw_singles:
         package = open_envelope(raw_singles[0], choices, limits)
         return {"package": package, "fragments": 1, "verified": True}

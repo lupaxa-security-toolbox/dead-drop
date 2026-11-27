@@ -112,9 +112,7 @@ def embed_lsb(source: Path, destination: Path, payload: bytes, options: EmbedOpt
     describe(destination)
     metrics = _snr(frames, bytes(data))
     warnings = list(options.warnings)
-    return EmbedReport(
-        "wav-lsb", "covert", len(payload), usable_bytes(total, options), changed, metrics, warnings, str(destination)
-    )
+    return EmbedReport("wav-lsb", "covert", len(payload), usable_bytes(total, options), changed, metrics, warnings, str(destination))
 
 
 def extract_lsb(path: Path, size: int, options: EmbedOptions) -> bytes:
@@ -150,6 +148,5 @@ def _snr(before: bytes, after: bytes) -> dict[str, Any]:
     return {
         "snr_db": snr,
         "changed_samples": sum(1 for left, right in zip(before, after, strict=True) if left != right),
-        "mean_absolute_difference": sum(abs(left - right) for left, right in zip(before, after, strict=True))
-        / len(before),
+        "mean_absolute_difference": sum(abs(left - right) for left, right in zip(before, after, strict=True)) / len(before),
     }

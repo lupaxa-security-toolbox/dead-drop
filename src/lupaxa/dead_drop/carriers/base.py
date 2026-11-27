@@ -97,28 +97,15 @@ def usable_bytes(capacity_bits: int, options: EmbedOptions) -> int:
 def check_fit(data: bytes, capacity_bits: int, options: EmbedOptions) -> None:
     """Reject a payload that does not fit the selected region."""
     if len(data) > usable_bytes(capacity_bits, options):
-        raise CapacityError(
-            f"Need {len(data)} bytes but the selected region holds {usable_bytes(capacity_bits, options)}."
-        )
+        raise CapacityError(f"Need {len(data)} bytes but the selected region holds {usable_bytes(capacity_bits, options)}.")
 
 
-def write_bits(
-    capacity_bits: int,
-    options: EmbedOptions,
-    payload: bytes,
-    set_bit: Callable[[int, int], None],
-) -> None:
+def write_bits(capacity_bits: int, options: EmbedOptions, payload: bytes, set_bit: Callable[[int, int], None]) -> None:
     """Write payload bits, storing a sequential nonce preamble when placement is keyed."""
     if options.placement == "keyed":
         options.require_keyed_material()
         prefix = b"DDNN" + options.nonce
-        sequential = EmbedOptions(
-            placement="sequential",
-            channels=options.channels,
-            bit_planes=options.bit_planes,
-            start_byte=options.start_byte,
-            preserve_alpha=options.preserve_alpha,
-        )
+        sequential = EmbedOptions(placement="sequential", channels=options.channels, bit_planes=options.bit_planes, start_byte=options.start_byte, preserve_alpha=options.preserve_alpha)
         _write_one(capacity_bits, sequential, prefix, set_bit)
         keyed = EmbedOptions(
             placement="keyed",
@@ -135,17 +122,10 @@ def write_bits(
     _write_one(capacity_bits, options, payload, set_bit)
 
 
-def read_bits(
-    capacity_bits: int, options: EmbedOptions, size: int, get_bit: Callable[[int], int]
-) -> tuple[bytes, EmbedOptions]:
+def read_bits(capacity_bits: int, options: EmbedOptions, size: int, get_bit: Callable[[int], int]) -> tuple[bytes, EmbedOptions]:
     """Read a payload, discovering a keyed nonce preamble when present."""
     if options.placement == "keyed":
-        sequential = EmbedOptions(
-            placement="sequential",
-            channels=options.channels,
-            bit_planes=options.bit_planes,
-            start_byte=options.start_byte,
-        )
+        sequential = EmbedOptions(placement="sequential", channels=options.channels, bit_planes=options.bit_planes, start_byte=options.start_byte)
         prefix = _read_one(capacity_bits, sequential, 20, get_bit)
         if not prefix.startswith(b"DDNN") or len(prefix) != 20:
             raise ArgumentError("Keyed carrier is missing its public nonce preamble.")

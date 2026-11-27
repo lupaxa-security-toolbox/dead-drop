@@ -35,15 +35,7 @@ def _scrub(value: object) -> object:
 
 
 def record_history(
-    *,
-    enabled: bool,
-    command: str,
-    status: str,
-    started: float,
-    inputs: list[str] | None = None,
-    outputs: list[str] | None = None,
-    warnings: list[str] | None = None,
-    error_code: str | None = None,
+    *, enabled: bool, command: str, status: str, started: float, inputs: list[str] | None = None, outputs: list[str] | None = None, warnings: list[str] | None = None, error_code: str | None = None
 ) -> dict[str, Any] | None:
     """Append one history record when history is enabled."""
     entry: dict[str, Any] = {

@@ -11,17 +11,7 @@ from typing import Any
 import typer
 
 from lupaxa.dead_drop import __version__
-from lupaxa.dead_drop.automation import (
-    audit_recovery,
-    create_challenge,
-    execute_plan,
-    load_recipe,
-    plan_payload,
-    read_slots,
-    run_recipe,
-    verify_challenge,
-    write_slots,
-)
+from lupaxa.dead_drop.automation import audit_recovery, create_challenge, execute_plan, load_recipe, plan_payload, read_slots, run_recipe, verify_challenge, write_slots
 from lupaxa.dead_drop.carriers.api import algorithm_catalogue, detect_format, validate
 from lupaxa.dead_drop.carriers.api import capacity as measure_capacity
 from lupaxa.dead_drop.carriers.base import EmbedOptions
@@ -32,49 +22,15 @@ from lupaxa.dead_drop.crypto.shamir import combine_shares, parse_share, split_se
 from lupaxa.dead_drop.errors import DeadDropError
 from lupaxa.dead_drop.history import read_history, record_history
 from lupaxa.dead_drop.laboratory import analyse as analyse_file
-from lupaxa.dead_drop.laboratory import (
-    benchmark,
-    compare_carriers,
-    stress,
-    write_table,
-)
-from lupaxa.dead_drop.laboratory import (
-    visualise as render_visual,
-)
+from lupaxa.dead_drop.laboratory import benchmark, compare_carriers, stress, write_table
+from lupaxa.dead_drop.laboratory import visualise as render_visual
 from lupaxa.dead_drop.limits import Limits
 from lupaxa.dead_drop.redact import configure_logging
 from lupaxa.dead_drop.result import Result
-from lupaxa.dead_drop.services.conceal import (
-    CryptoChoices,
-    DistributionChoices,
-    hide_into,
-    prepare_package,
-    recover_from,
-    reveal_from,
-)
-from lupaxa.dead_drop.services.conceal import (
-    distribute as distribute_payload,
-)
-from lupaxa.dead_drop.vault.ops import (
-    backup,
-    compact,
-    copy_path,
-    destroy,
-    find,
-    listing,
-    mkdir,
-    move,
-    rebalance,
-    remove,
-    repair_plan,
-    restore_backup,
-    restore_snapshot,
-    snapshot,
-    tree_lines,
-)
-from lupaxa.dead_drop.vault.ops import (
-    verify as verify_vault,
-)
+from lupaxa.dead_drop.services.conceal import CryptoChoices, DistributionChoices, hide_into, prepare_package, recover_from, reveal_from
+from lupaxa.dead_drop.services.conceal import distribute as distribute_payload
+from lupaxa.dead_drop.vault.ops import backup, compact, copy_path, destroy, find, listing, mkdir, move, rebalance, remove, repair_plan, restore_backup, restore_snapshot, snapshot, tree_lines
+from lupaxa.dead_drop.vault.ops import verify as verify_vault
 from lupaxa.dead_drop.vault.store import VaultSettings, create_vault, open_vault
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
@@ -147,12 +103,7 @@ def _password(ctx: typer.Context, password_file: Path | None, *, confirm: bool =
 
 def _emit(ctx: typer.Context, result: Result, started: float) -> None:
     record_history(
-        enabled=True,
-        command=result.command,
-        status="ok" if result.success else "error",
-        started=started,
-        warnings=result.warnings,
-        error_code=result.errors[0]["code"] if result.errors else None,
+        enabled=True, command=result.command, status="ok" if result.success else "error", started=started, warnings=result.warnings, error_code=result.errors[0]["code"] if result.errors else None
     )
     if _state(ctx).json:
         sys.stdout.write(result.to_json() + "\n")
@@ -234,15 +185,7 @@ def hide(
         if _state(ctx).dry_run:
             _emit(ctx, Result("hide", data={"dry_run": True, "output": str(output)}), started)
             return
-        data = hide_into(
-            carrier,
-            output,
-            prepare_package(payload, None, _limits(ctx)),
-            choices=choices,
-            options=EmbedOptions(force=_state(ctx).force),
-            limits=_limits(ctx),
-            algorithm=algorithm,
-        )
+        data = hide_into(carrier, output, prepare_package(payload, None, _limits(ctx)), choices=choices, options=EmbedOptions(force=_state(ctx).force), limits=_limits(ctx), algorithm=algorithm)
         _emit(ctx, Result("hide", data=data, warnings=data.pop("warnings")), started)
     except DeadDropError as exc:
         raise typer.Exit(_fail(ctx, "hide", exc)) from exc
@@ -263,14 +206,7 @@ def reveal(
     try:
         choices = CryptoChoices(encrypt=True, password=_password(ctx, password_file), kdf=_kdf(ctx))
         output.mkdir(parents=True, exist_ok=True)
-        data = reveal_from(
-            carrier,
-            choices=choices,
-            options=EmbedOptions(),
-            limits=_limits(ctx),
-            algorithm=algorithm,
-            destination=output,
-        )
+        data = reveal_from(carrier, choices=choices, options=EmbedOptions(), limits=_limits(ctx), algorithm=algorithm, destination=output)
         _emit(ctx, Result("reveal", data=data), started)
     except DeadDropError as exc:
         raise typer.Exit(_fail(ctx, "reveal", exc)) from exc
@@ -310,58 +246,33 @@ def distribute(
 
 
 @app.command()
-def recover(
-    ctx: typer.Context,
-    directory: Path,
-    output: Path = typer.Option(..., "--output"),
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def recover(ctx: typer.Context, directory: Path, output: Path = typer.Option(..., "--output"), password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Recover a payload by scanning a directory. No separate manifest is required."""
     import time
 
     started = time.monotonic()
     try:
         files = sorted(path for path in directory.iterdir() if path.is_file())
-        found = recover_from(
-            files,
-            choices=CryptoChoices(encrypt=True, password=_password(ctx, password_file), kdf=_kdf(ctx)),
-            options=EmbedOptions(),
-            limits=_limits(ctx),
-        )
+        found = recover_from(files, choices=CryptoChoices(encrypt=True, password=_password(ctx, password_file), kdf=_kdf(ctx)), options=EmbedOptions(), limits=_limits(ctx))
         output.parent.mkdir(parents=True, exist_ok=True)
         from lupaxa.dead_drop.payload.package import unpack_package
 
         unpack_package(found["package"], output if output.is_dir() else output.parent, limits=_limits(ctx))
-        _emit(
-            ctx,
-            Result("recover", data={"verified": True, "fragments": found["fragments"], "output": str(output)}),
-            started,
-        )
+        _emit(ctx, Result("recover", data={"verified": True, "fragments": found["fragments"], "output": str(output)}), started)
     except DeadDropError as exc:
         raise typer.Exit(_fail(ctx, "recover", exc)) from exc
 
 
 @app.command()
 def plan(
-    ctx: typer.Context,
-    payload: Path,
-    carriers: Path = typer.Option(..., "--carriers"),
-    optimise: str = typer.Option("balanced", "--optimise"),
-    save: Path | None = typer.Option(None, "--save"),
+    ctx: typer.Context, payload: Path, carriers: Path = typer.Option(..., "--carriers"), optimise: str = typer.Option("balanced", "--optimise"), save: Path | None = typer.Option(None, "--save")
 ) -> None:
     """Plan an embedding. This command never modifies carriers."""
     import time
 
     started = time.monotonic()
     files = sorted(path for path in carriers.iterdir() if path.is_file())
-    result = plan_payload(
-        payload,
-        files,
-        strategy=optimise,
-        distribution=DistributionChoices(),
-        limits=_limits(ctx),
-        options=EmbedOptions(),
-    )
+    result = plan_payload(payload, files, strategy=optimise, distribution=DistributionChoices(), limits=_limits(ctx), options=EmbedOptions())
     if save:
         save.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     _emit(ctx, Result("plan", data=result, warnings=result["warnings"]), started)
@@ -374,9 +285,7 @@ def capacity(ctx: typer.Context, carrier: Path, algorithm: str = typer.Option("a
 
     started = time.monotonic()
     held = measure_capacity(carrier, algorithm, EmbedOptions(), _limits(ctx))
-    _emit(
-        ctx, Result("capacity", data={"bytes": held, "algorithm": algorithm, "format": detect_format(carrier)}), started
-    )
+    _emit(ctx, Result("capacity", data={"bytes": held, "algorithm": algorithm, "format": detect_format(carrier)}), started)
 
 
 @app.command()
@@ -388,11 +297,7 @@ def inspect(ctx: typer.Context, carrier: Path) -> None:
 
 
 @app.command()
-def analyse(
-    ctx: typer.Context,
-    carrier: Path,
-    deep: bool = typer.Option(False, "--deep", is_flag=True),
-) -> None:
+def analyse(ctx: typer.Context, carrier: Path, deep: bool = typer.Option(False, "--deep", is_flag=True)) -> None:
     """Analyse a carrier. Statistics are not presented as proof."""
     import time
 
@@ -419,9 +324,7 @@ def visualise(
     """Export a visualisation."""
     import time
 
-    _emit(
-        ctx, Result("visualise", data=render_visual(carrier, kind, output, channel=channel, bit=bit)), time.monotonic()
-    )
+    _emit(ctx, Result("visualise", data=render_visual(carrier, kind, output, channel=channel, bit=bit)), time.monotonic())
 
 
 @app.command("stress-test")
@@ -433,23 +336,13 @@ def stress_test(ctx: typer.Context, carrier: Path) -> None:
 
 
 @app.command()
-def verify(
-    ctx: typer.Context,
-    carrier: Path,
-    expected: Path,
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def verify(ctx: typer.Context, carrier: Path, expected: Path, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Reveal a carrier and compare it with an expected file."""
     import time
 
     started = time.monotonic()
     try:
-        found = reveal_from(
-            carrier,
-            choices=CryptoChoices(encrypt=True, password=_password(ctx, password_file), kdf=_kdf(ctx)),
-            options=EmbedOptions(),
-            limits=_limits(ctx),
-        )
+        found = reveal_from(carrier, choices=CryptoChoices(encrypt=True, password=_password(ctx, password_file), kdf=_kdf(ctx)), options=EmbedOptions(), limits=_limits(ctx))
         from lupaxa.dead_drop.payload.package import package_path
 
         expected_package = package_path(expected, limits=_limits(ctx))
@@ -502,11 +395,7 @@ def carriers_validate(ctx: typer.Context, carrier: Path) -> None:
 
 @shares_app.command("create")
 def shares_create(
-    ctx: typer.Context,
-    secret: Path,
-    shares: int = typer.Option(..., "--shares"),
-    threshold: int = typer.Option(..., "--threshold"),
-    output: Path = typer.Option(..., "--output"),
+    ctx: typer.Context, secret: Path, shares: int = typer.Option(..., "--shares"), threshold: int = typer.Option(..., "--threshold"), output: Path = typer.Option(..., "--output")
 ) -> None:
     """Split a key file into Shamir shares."""
     import time
@@ -515,11 +404,7 @@ def shares_create(
     parts = split_secret(secret.read_bytes(), shares=shares, threshold=threshold)
     for index, share in enumerate(parts, start=1):
         (output / f"share-{index}.ddshare").write_bytes(share.serialise())
-    _emit(
-        ctx,
-        Result("shares create", data={"shares": shares, "threshold": threshold, "output": str(output)}),
-        time.monotonic(),
-    )
+    _emit(ctx, Result("shares create", data={"shares": shares, "threshold": threshold, "output": str(output)}), time.monotonic())
 
 
 @shares_app.command("inspect")
@@ -528,13 +413,7 @@ def shares_inspect(ctx: typer.Context, share: Path) -> None:
     import time
 
     parsed = parse_share(share.read_bytes())
-    _emit(
-        ctx,
-        Result(
-            "shares inspect", data={"threshold": parsed.threshold, "index": parsed.index, "set_id": parsed.set_id.hex()}
-        ),
-        time.monotonic(),
-    )
+    _emit(ctx, Result("shares inspect", data={"threshold": parsed.threshold, "index": parsed.index, "set_id": parsed.set_id.hex()}), time.monotonic())
 
 
 @shares_app.command("combine")
@@ -577,10 +456,7 @@ def algorithms_info(ctx: typer.Context, identifier: str) -> None:
 
 @algorithms_app.command("compare")
 def algorithms_compare(
-    ctx: typer.Context,
-    carrier: Path = typer.Option(..., "--carrier"),
-    payload: Path = typer.Option(..., "--payload"),
-    output: Path | None = typer.Option(None, "--output"),
+    ctx: typer.Context, carrier: Path = typer.Option(..., "--carrier"), payload: Path = typer.Option(..., "--payload"), output: Path | None = typer.Option(None, "--output")
 ) -> None:
     """Compare the algorithms that apply to a carrier."""
     import time
@@ -590,19 +466,11 @@ def algorithms_compare(
     rows = benchmark(carrier, payload.read_bytes(), names, _limits(ctx))
     if output is not None:
         write_table(rows, output)
-    _emit(
-        ctx,
-        Result("algorithms compare", data={"results": rows, "output": str(output) if output else ""}),
-        time.monotonic(),
-    )
+    _emit(ctx, Result("algorithms compare", data={"results": rows, "output": str(output) if output else ""}), time.monotonic())
 
 
 @algorithms_app.command("benchmark")
-def algorithms_benchmark(
-    ctx: typer.Context,
-    carrier: Path = typer.Option(..., "--carrier"),
-    payload: Path = typer.Option(..., "--payload"),
-) -> None:
+def algorithms_benchmark(ctx: typer.Context, carrier: Path = typer.Option(..., "--carrier"), payload: Path = typer.Option(..., "--payload")) -> None:
     """Benchmark applicable algorithms."""
     algorithms_compare(ctx, carrier, payload)
 
@@ -674,32 +542,20 @@ def slots_inspect(ctx: typer.Context, carrier: Path, slot: str = typer.Option(..
 
 
 @slots_app.command("reserve")
-def slots_reserve(
-    ctx: typer.Context,
-    carrier: Path,
-    slot: str = typer.Option(..., "--slot"),
-    output: Path = typer.Option(..., "--output"),
-) -> None:
+def slots_reserve(ctx: typer.Context, carrier: Path, slot: str = typer.Option(..., "--slot"), output: Path = typer.Option(..., "--output")) -> None:
     """Reserve a named slot in a new carrier copy."""
     import time
 
     slots = _read_slots(carrier, ctx)
     if any(item["name"] == slot for item in slots):
-        raise typer.Exit(
-            _fail(ctx, "slots reserve", DeadDropError(f"Slot {slot} already exists.", code="output_collision"))
-        )
+        raise typer.Exit(_fail(ctx, "slots reserve", DeadDropError(f"Slot {slot} already exists.", code="output_collision")))
     slots.append({"name": slot, "bytes": 0, "occupied": False})
     _write_slots(carrier, output, slots, ctx)
     _emit(ctx, Result("slots reserve", data={"slot": slot, "output": str(output)}), time.monotonic())
 
 
 @slots_app.command("remove")
-def slots_remove(
-    ctx: typer.Context,
-    carrier: Path,
-    slot: str = typer.Option(..., "--slot"),
-    output: Path = typer.Option(..., "--output"),
-) -> None:
+def slots_remove(ctx: typer.Context, carrier: Path, slot: str = typer.Option(..., "--slot"), output: Path = typer.Option(..., "--output")) -> None:
     """Remove a named slot from a new carrier copy."""
     import time
 
@@ -732,35 +588,19 @@ def vault_create(
     try:
         if not encrypt:
             raise DeadDropError("Vault creation requires encryption.", code="invalid_arguments")
-        vault = create_vault(
-            directory,
-            _password(ctx, password_file, confirm=True),
-            VaultSettings(name=name, redundancy=redundancy, kdf=_kdf(ctx)),
-            _limits(ctx),
-        )
-        _emit(
-            ctx,
-            Result(
-                "vault create",
-                data={"vault_id": vault.state["vault_id"], "capacity_bytes": vault.usable_capacity(_limits(ctx))},
-            ),
-            started,
-        )
+        vault = create_vault(directory, _password(ctx, password_file, confirm=True), VaultSettings(name=name, redundancy=redundancy, kdf=_kdf(ctx)), _limits(ctx))
+        _emit(ctx, Result("vault create", data={"vault_id": vault.state["vault_id"], "capacity_bytes": vault.usable_capacity(_limits(ctx))}), started)
     except DeadDropError as exc:
         raise typer.Exit(_fail(ctx, "vault create", exc)) from exc
 
 
 @vault_app.command("open")
-def vault_open(
-    ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")
-) -> None:
+def vault_open(ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Open a vault and report its generation."""
     import time
 
     vault = open_vault(directory, _password(ctx, password_file), _kdf(ctx), _limits(ctx))
-    _emit(
-        ctx, Result("vault open", data={"generation": vault.generation, "name": vault.state["name"]}), time.monotonic()
-    )
+    _emit(ctx, Result("vault open", data={"generation": vault.generation, "name": vault.state["name"]}), time.monotonic())
 
 
 @vault_app.command("close")
@@ -772,26 +612,16 @@ def vault_close(ctx: typer.Context) -> None:
 
 
 @vault_app.command("status")
-def vault_status(
-    ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")
-) -> None:
+def vault_status(ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Show vault generation and capacity."""
     import time
 
     vault = open_vault(directory, _password(ctx, password_file), _kdf(ctx), _limits(ctx))
-    _emit(
-        ctx,
-        Result(
-            "vault status", data={"generation": vault.generation, "capacity_bytes": vault.usable_capacity(_limits(ctx))}
-        ),
-        time.monotonic(),
-    )
+    _emit(ctx, Result("vault status", data={"generation": vault.generation, "capacity_bytes": vault.usable_capacity(_limits(ctx))}), time.monotonic())
 
 
 @vault_app.command("ls")
-def vault_ls(
-    ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")
-) -> None:
+def vault_ls(ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """List the vault root."""
     import time
 
@@ -800,9 +630,7 @@ def vault_ls(
 
 
 @vault_app.command("tree")
-def vault_tree(
-    ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")
-) -> None:
+def vault_tree(ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Print the vault tree."""
     import time
 
@@ -811,13 +639,7 @@ def vault_tree(
 
 
 @vault_app.command("put")
-def vault_put(
-    ctx: typer.Context,
-    directory: Path,
-    source: Path,
-    vault_path: str,
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_put(ctx: typer.Context, directory: Path, source: Path, vault_path: str, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Store a file in the vault."""
     import time
 
@@ -828,13 +650,7 @@ def vault_put(
 
 
 @vault_app.command("get")
-def vault_get(
-    ctx: typer.Context,
-    directory: Path,
-    vault_path: str,
-    output: Path = typer.Option(..., "--output"),
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_get(ctx: typer.Context, directory: Path, vault_path: str, output: Path = typer.Option(..., "--output"), password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Retrieve a vault file."""
     import time
 
@@ -844,12 +660,7 @@ def vault_get(
 
 
 @vault_app.command("cat")
-def vault_cat(
-    ctx: typer.Context,
-    directory: Path,
-    vault_path: str,
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_cat(ctx: typer.Context, directory: Path, vault_path: str, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Print a vault file to stdout when it is valid UTF-8."""
     import time
 
@@ -859,12 +670,7 @@ def vault_cat(
 
 
 @vault_app.command("mkdir")
-def vault_mkdir(
-    ctx: typer.Context,
-    directory: Path,
-    vault_path: str,
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_mkdir(ctx: typer.Context, directory: Path, vault_path: str, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Create a vault directory."""
     import time
 
@@ -876,12 +682,7 @@ def vault_mkdir(
 
 
 @vault_app.command("rmdir")
-def vault_rmdir(
-    ctx: typer.Context,
-    directory: Path,
-    vault_path: str,
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_rmdir(ctx: typer.Context, directory: Path, vault_path: str, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Remove an empty vault directory."""
     import time
 
@@ -901,12 +702,7 @@ def vault_rmdir(
 
 
 @vault_app.command("rm")
-def vault_rm(
-    ctx: typer.Context,
-    directory: Path,
-    vault_path: str,
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_rm(ctx: typer.Context, directory: Path, vault_path: str, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Delete a vault file."""
     import time
 
@@ -918,13 +714,7 @@ def vault_rm(
 
 
 @vault_app.command("mv")
-def vault_mv(
-    ctx: typer.Context,
-    directory: Path,
-    source: str,
-    destination: str,
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_mv(ctx: typer.Context, directory: Path, source: str, destination: str, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Move a vault path."""
     import time
 
@@ -936,13 +726,7 @@ def vault_mv(
 
 
 @vault_app.command("cp")
-def vault_cp(
-    ctx: typer.Context,
-    directory: Path,
-    source: str,
-    destination: str,
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_cp(ctx: typer.Context, directory: Path, source: str, destination: str, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Copy a vault file."""
     import time
 
@@ -954,9 +738,7 @@ def vault_cp(
 
 
 @vault_app.command("find")
-def vault_find(
-    ctx: typer.Context, directory: Path, text: str, password_file: Path | None = typer.Option(None, "--password-file")
-) -> None:
+def vault_find(ctx: typer.Context, directory: Path, text: str, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Find vault paths."""
     import time
 
@@ -965,12 +747,7 @@ def vault_find(
 
 
 @vault_app.command("info")
-def vault_info(
-    ctx: typer.Context,
-    directory: Path,
-    vault_path: str,
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_info(ctx: typer.Context, directory: Path, vault_path: str, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Show metadata for one vault path."""
     import time
 
@@ -983,20 +760,13 @@ def vault_info(
 
 
 @vault_app.command("capacity")
-def vault_capacity(
-    ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")
-) -> None:
+def vault_capacity(ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Report usable vault capacity."""
     vault_status(ctx, directory, password_file)
 
 
 @vault_app.command("verify")
-def vault_verify(
-    ctx: typer.Context,
-    directory: Path,
-    deep: bool = typer.Option(False, "--deep", is_flag=True),
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_verify(ctx: typer.Context, directory: Path, deep: bool = typer.Option(False, "--deep", is_flag=True), password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Verify vault metadata and, with --deep, every file."""
     import time
 
@@ -1005,12 +775,7 @@ def vault_verify(
 
 
 @vault_app.command("repair")
-def vault_repair(
-    ctx: typer.Context,
-    directory: Path,
-    apply: bool = typer.Option(False, "--apply", is_flag=True),
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_repair(ctx: typer.Context, directory: Path, apply: bool = typer.Option(False, "--apply", is_flag=True), password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Show a repair plan before any rewrite."""
     import time
 
@@ -1024,9 +789,7 @@ def vault_repair(
 
 
 @vault_app.command("rebalance")
-def vault_rebalance(
-    ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")
-) -> None:
+def vault_rebalance(ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Redistribute shards and adopt new carriers."""
     import time
 
@@ -1035,9 +798,7 @@ def vault_rebalance(
 
 
 @vault_app.command("compact")
-def vault_compact(
-    ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")
-) -> None:
+def vault_compact(ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Drop blocks that no generation or snapshot still references."""
     import time
 
@@ -1072,23 +833,12 @@ def vault_snapshot(
     elif name:
         data = snapshot(vault, name, _limits(ctx))
     else:
-        raise typer.Exit(
-            _fail(
-                ctx,
-                "vault snapshot",
-                DeadDropError("Choose --name, --list, --restore, or --delete.", code="invalid_arguments"),
-            )
-        )
+        raise typer.Exit(_fail(ctx, "vault snapshot", DeadDropError("Choose --name, --list, --restore, or --delete.", code="invalid_arguments")))
     _emit(ctx, Result("vault snapshot", data=data), time.monotonic())
 
 
 @vault_app.command("restore")
-def vault_restore(
-    ctx: typer.Context,
-    directory: Path,
-    name: str = typer.Option(..., "--name"),
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_restore(ctx: typer.Context, directory: Path, name: str = typer.Option(..., "--name"), password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Restore a snapshot."""
     import time
 
@@ -1098,12 +848,7 @@ def vault_restore(
 
 
 @vault_app.command("backup")
-def vault_backup(
-    ctx: typer.Context,
-    directory: Path,
-    output: Path = typer.Option(..., "--output"),
-    password_file: Path | None = typer.Option(None, "--password-file"),
-) -> None:
+def vault_backup(ctx: typer.Context, directory: Path, output: Path = typer.Option(..., "--output"), password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Export an encrypted backup that can be restored without the carriers."""
     import time
 
@@ -1126,77 +871,37 @@ def vault_recover(
 
     if backup_path is not None:
         if output is None:
-            raise typer.Exit(
-                _fail(
-                    ctx, "vault recover", DeadDropError("--output is required with --backup.", code="invalid_arguments")
-                )
-            )
+            raise typer.Exit(_fail(ctx, "vault recover", DeadDropError("--output is required with --backup.", code="invalid_arguments")))
         data = restore_backup(backup_path, output, _password(ctx, password_file), _kdf(ctx), _limits(ctx))
     else:
         if directory is None:
-            raise typer.Exit(
-                _fail(
-                    ctx,
-                    "vault recover",
-                    DeadDropError("Provide a carrier directory or --backup.", code="invalid_arguments"),
-                )
-            )
+            raise typer.Exit(_fail(ctx, "vault recover", DeadDropError("Provide a carrier directory or --backup.", code="invalid_arguments")))
         vault = open_vault(directory, _password(ctx, password_file), _kdf(ctx), _limits(ctx))
         data = {"generation": vault.generation, "vault_id": vault.state["vault_id"], "files": tree_lines(vault)}
     _emit(ctx, Result("vault recover", data=data), time.monotonic())
 
 
 @vault_app.command("destroy")
-def vault_destroy(
-    ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")
-) -> None:
+def vault_destroy(ctx: typer.Context, directory: Path, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Replace vault embeddings. This does not promise secure deletion."""
     import time
 
     if not _state(ctx).force:
-        raise typer.Exit(
-            _fail(
-                ctx,
-                "vault destroy",
-                DeadDropError("Refusing to destroy a vault without --force.", code="invalid_arguments"),
-            )
-        )
+        raise typer.Exit(_fail(ctx, "vault destroy", DeadDropError("Refusing to destroy a vault without --force.", code="invalid_arguments")))
     vault = open_vault(directory, _password(ctx, password_file), _kdf(ctx), _limits(ctx))
-    _emit(
-        ctx,
-        Result(
-            "vault destroy",
-            data=destroy(vault, _limits(ctx)),
-            warnings=["Secure deletion from SSDs and old copies is not guaranteed."],
-        ),
-        time.monotonic(),
-    )
+    _emit(ctx, Result("vault destroy", data=destroy(vault, _limits(ctx)), warnings=["Secure deletion from SSDs and old copies is not guaranteed."]), time.monotonic())
 
 
 @challenge_app.command("create")
-def challenge_create(
-    ctx: typer.Context,
-    difficulty: str = typer.Option("easy", "--difficulty"),
-    output: Path = typer.Option(..., "--output"),
-    seed: str = typer.Option("local", "--seed"),
-) -> None:
+def challenge_create(ctx: typer.Context, difficulty: str = typer.Option("easy", "--difficulty"), output: Path = typer.Option(..., "--output"), seed: str = typer.Option("local", "--seed")) -> None:
     """Create a challenge. The solution is written only under .private."""
     import time
 
-    _emit(
-        ctx,
-        Result("challenge create", data=create_challenge(output, difficulty=difficulty, seed=seed)),
-        time.monotonic(),
-    )
+    _emit(ctx, Result("challenge create", data=create_challenge(output, difficulty=difficulty, seed=seed)), time.monotonic())
 
 
 @challenge_app.command("generate")
-def challenge_generate(
-    ctx: typer.Context,
-    difficulty: str = typer.Option("medium", "--difficulty"),
-    output: Path = typer.Option(..., "--output"),
-    seed: str = typer.Option("local", "--seed"),
-) -> None:
+def challenge_generate(ctx: typer.Context, difficulty: str = typer.Option("medium", "--difficulty"), output: Path = typer.Option(..., "--output"), seed: str = typer.Option("local", "--seed")) -> None:
     """Generate a challenge from a seed."""
     challenge_create(ctx, difficulty, output, seed)
 
@@ -1206,11 +911,7 @@ def challenge_inspect(ctx: typer.Context, directory: Path) -> None:
     """Show public challenge metadata."""
     import time
 
-    _emit(
-        ctx,
-        Result("challenge inspect", data=json.loads((directory / "challenge.json").read_text(encoding="utf-8"))),
-        time.monotonic(),
-    )
+    _emit(ctx, Result("challenge inspect", data=json.loads((directory / "challenge.json").read_text(encoding="utf-8"))), time.monotonic())
 
 
 @challenge_app.command("solve")
@@ -1260,11 +961,7 @@ def recipe_validate(ctx: typer.Context, path: Path) -> None:
     import time
 
     recipe = load_recipe(path)
-    _emit(
-        ctx,
-        Result("recipe validate", data={"operation": recipe["recipe"]["operation"], "valid": True}),
-        time.monotonic(),
-    )
+    _emit(ctx, Result("recipe validate", data={"operation": recipe["recipe"]["operation"], "valid": True}), time.monotonic())
 
 
 @recipe_app.command("plan")
@@ -1276,29 +973,15 @@ def recipe_plan(ctx: typer.Context, path: Path) -> None:
 
 
 @recipe_app.command("run")
-def recipe_run(
-    ctx: typer.Context, path: Path, password_file: Path | None = typer.Option(None, "--password-file")
-) -> None:
+def recipe_run(ctx: typer.Context, path: Path, password_file: Path | None = typer.Option(None, "--password-file")) -> None:
     """Run a recipe."""
     import time
 
     try:
         if path.suffix == ".json":
-            result = execute_plan(
-                path,
-                _limits(ctx),
-                password=_password(ctx, password_file, confirm=True),
-                output=path.parent / "executed",
-                kdf=_kdf(ctx),
-            )
+            result = execute_plan(path, _limits(ctx), password=_password(ctx, password_file, confirm=True), output=path.parent / "executed", kdf=_kdf(ctx))
         else:
-            result = run_recipe(
-                path,
-                _limits(ctx),
-                password=_password(ctx, password_file, confirm=True),
-                dry_run=_state(ctx).dry_run,
-                kdf=_kdf(ctx),
-            )
+            result = run_recipe(path, _limits(ctx), password=_password(ctx, password_file, confirm=True), dry_run=_state(ctx).dry_run, kdf=_kdf(ctx))
         _emit(ctx, Result("recipe run", data=result), time.monotonic())
     except DeadDropError as exc:
         raise typer.Exit(_fail(ctx, "recipe run", exc)) from exc

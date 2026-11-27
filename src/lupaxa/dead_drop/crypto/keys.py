@@ -69,10 +69,7 @@ def read_key_file(path: Path) -> bytearray:
 def read_password_file(path: Path) -> tuple[str, str]:
     """Read a password file and return the password plus a warning."""
     mode = path.stat().st_mode
-    warning = (
-        f"Password file {path} stores a reusable secret on disk. "
-        "Prefer an interactive prompt or a randomly generated key file."
-    )
+    warning = f"Password file {path} stores a reusable secret on disk. Prefer an interactive prompt or a randomly generated key file."
     if mode & (stat.S_IRGRP | stat.S_IROTH):
         warning += " The file is readable by users other than the owner."
     text = path.read_text(encoding="utf-8").rstrip("\r\n")

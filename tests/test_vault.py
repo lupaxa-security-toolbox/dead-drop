@@ -19,12 +19,7 @@ def _vault(tmp_path: Path) -> Vault:
         Image.new("RGB", (220, 220), (index, 20, 40)).save(tmp_path / f"{index}.png")
     source = tmp_path.parent / "hello.txt"
     source.write_text("hello vault", encoding="utf-8")
-    vault = create_vault(
-        tmp_path,
-        "vault-password-value",
-        VaultSettings(name="personal", redundancy=1, block_size=512, kdf=FAST),
-        Limits(),
-    )
+    vault = create_vault(tmp_path, "vault-password-value", VaultSettings(name="personal", redundancy=1, block_size=512, kdf=FAST), Limits())
     vault.put(source, "notes/hello.txt", Limits())
     vault.commit(Limits())
     return open_vault(tmp_path, "vault-password-value", FAST, Limits())

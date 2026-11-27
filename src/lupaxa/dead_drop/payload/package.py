@@ -152,11 +152,7 @@ def _guard_zip(archive: zipfile.ZipFile, limits: Limits) -> None:
         if info.filename.startswith("/") or ".." in Path(info.filename).parts or info.filename.startswith("\\"):
             raise FilesystemError(f"Archive member {info.filename!r} is unsafe.")
         total += info.file_size
-        if (
-            info.compress_size
-            and info.file_size / max(info.compress_size, 1) > limits.max_compression_ratio
-            and info.file_size > 1024 * 1024
-        ):
+        if info.compress_size and info.file_size / max(info.compress_size, 1) > limits.max_compression_ratio and info.file_size > 1024 * 1024:
             raise LimitError(f"Archive member {info.filename!r} looks like a decompression bomb.")
         limits.check_expansion(total)
 

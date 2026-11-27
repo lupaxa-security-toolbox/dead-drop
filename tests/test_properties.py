@@ -18,14 +18,7 @@ from lupaxa.dead_drop.redact import RedactFilter, register_secret
 @settings(max_examples=25)
 @given(st.binary(max_size=128))
 def test_unencrypted_envelope_round_trip(payload: bytes) -> None:
-    blob = build_envelope(
-        envelope_type=1,
-        algorithm_id=0,
-        payload_id=b"\x01" * 16,
-        plaintext=payload,
-        encryption="none",
-        max_plain_bytes=10_000,
-    )
+    blob = build_envelope(envelope_type=1, algorithm_id=0, payload_id=b"\x01" * 16, plaintext=payload, encryption="none", max_plain_bytes=10_000)
     parsed = parse_envelope(blob, key=None, max_plain_bytes=10_000)
     assert parsed.body == payload
 

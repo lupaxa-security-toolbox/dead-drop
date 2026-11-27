@@ -40,9 +40,7 @@ def analyse(path: Path, limits: Limits, *, deep: bool) -> dict[str, Any]:
     if data.startswith(b"\x89PNG") and b"IEND" in data and not data.rstrip(b"\x00").endswith(b"IEND\xaeB`\x82"):
         report["facts"].append("Bytes follow the PNG IEND chunk.")
     if b"DDR1" in data:
-        report["detections"].append(
-            {"name": "envelope_magic", "detail": "A Dead Drop envelope magic value was found in cleartext bytes."}
-        )
+        report["detections"].append({"name": "envelope_magic", "detail": "A Dead Drop envelope magic value was found in cleartext bytes."})
     if kind == "png" and deep:
         report["measurements"].extend(_image_measurements(path))
     if kind in {"txt", "markdown"}:
@@ -172,9 +170,7 @@ def _svg_bar(kind: str, values: list[int]) -> str:
     bars = []
     for index, value in enumerate(values):
         bars.append(f'<rect x="{index * 40}" y="{100 - value * 10}" width="30" height="{value * 10}" />')
-    return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="400" height="120"><title>{kind}</title>{"".join(bars)}</svg>'
-    )
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="400" height="120"><title>{kind}</title>{"".join(bars)}</svg>'
 
 
 def _html(kind: str, path: Path, rows: list[dict[str, Any]] | None = None) -> str:
@@ -187,9 +183,7 @@ def _html(kind: str, path: Path, rows: list[dict[str, Any]] | None = None) -> st
         "<p>This page is a measurement, not a detection verdict.</p>"
         "<pre>{{ rows }}</pre></body></html>"
     )
-    return template.render(
-        title="Dead Drop visualisation", kind=kind, name=path.name, rows=json.dumps(rows or [], indent=2)
-    )
+    return template.render(title="Dead Drop visualisation", kind=kind, name=path.name, rows=json.dumps(rows or [], indent=2))
 
 
 def write_table(rows: list[dict[str, Any]], output: Path) -> None:

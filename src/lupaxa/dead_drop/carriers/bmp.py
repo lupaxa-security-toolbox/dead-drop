@@ -102,16 +102,7 @@ def embed_lsb(source: Path, destination: Path, payload: bytes, options: EmbedOpt
     bmp.save(destination)
     validate_bmp(destination)
     metrics = _byte_metrics(before, destination.read_bytes())
-    return EmbedReport(
-        "bmp-lsb",
-        "covert",
-        len(payload),
-        usable_bytes(total, options),
-        changed,
-        metrics,
-        list(options.warnings),
-        str(destination),
-    )
+    return EmbedReport("bmp-lsb", "covert", len(payload), usable_bytes(total, options), changed, metrics, list(options.warnings), str(destination))
 
 
 def extract_lsb(path: Path, size: int, options: EmbedOptions) -> bytes:

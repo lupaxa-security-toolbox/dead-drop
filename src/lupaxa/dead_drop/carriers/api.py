@@ -171,36 +171,8 @@ def algorithm_catalogue() -> dict[str, AlgorithmInfo]:
             ("lsb-distribution",),
             "covert",
         ),
-        AlgorithmInfo(
-            "txt-whitespace",
-            "1",
-            ("txt",),
-            ("utf-8",),
-            "line_count - 1",
-            False,
-            False,
-            True,
-            "destroyed by whitespace trimming",
-            ("whitespace",),
-            (),
-            ("trailing-whitespace",),
-            "covert",
-        ),
-        AlgorithmInfo(
-            "txt-space-tab",
-            "1",
-            ("txt",),
-            ("utf-8",),
-            "configured text limit",
-            False,
-            False,
-            True,
-            "destroyed by whitespace normalisation",
-            ("whitespace",),
-            (),
-            ("space-tab",),
-            "covert",
-        ),
+        AlgorithmInfo("txt-whitespace", "1", ("txt",), ("utf-8",), "line_count - 1", False, False, True, "destroyed by whitespace trimming", ("whitespace",), (), ("trailing-whitespace",), "covert"),
+        AlgorithmInfo("txt-space-tab", "1", ("txt",), ("utf-8",), "configured text limit", False, False, True, "destroyed by whitespace normalisation", ("whitespace",), (), ("space-tab",), "covert"),
         AlgorithmInfo(
             "txt-zero-width",
             "1",
@@ -231,35 +203,9 @@ def algorithm_catalogue() -> dict[str, AlgorithmInfo]:
             ("trailing-whitespace",),
             "covert",
         ),
+        AlgorithmInfo("md-space-tab", "1", ("markdown",), ("utf-8",), "configured text limit", False, False, True, "destroyed by Markdown rewrapping", ("whitespace",), (), ("space-tab",), "covert"),
         AlgorithmInfo(
-            "md-space-tab",
-            "1",
-            ("markdown",),
-            ("utf-8",),
-            "configured text limit",
-            False,
-            False,
-            True,
-            "destroyed by Markdown rewrapping",
-            ("whitespace",),
-            (),
-            ("space-tab",),
-            "covert",
-        ),
-        AlgorithmInfo(
-            "md-zero-width",
-            "1",
-            ("markdown",),
-            ("utf-8",),
-            "configured text limit",
-            False,
-            False,
-            True,
-            "destroyed by zero-width stripping",
-            ("invisible-chars",),
-            (),
-            ("zero-width",),
-            "covert",
+            "md-zero-width", "1", ("markdown",), ("utf-8",), "configured text limit", False, False, True, "destroyed by zero-width stripping", ("invisible-chars",), (), ("zero-width",), "covert"
         ),
         AlgorithmInfo(
             "svg-metadata",
@@ -351,18 +297,14 @@ def capacity(path: Path, algorithm: str, options: EmbedOptions, limits: Limits) 
     return max(0, usable)
 
 
-def embed(
-    source: Path, destination: Path, payload: bytes, algorithm: str, options: EmbedOptions, limits: Limits
-) -> EmbedReport:
+def embed(source: Path, destination: Path, payload: bytes, algorithm: str, options: EmbedOptions, limits: Limits) -> EmbedReport:
     """Embed payload bytes, prefixed with their length, and return the engine report."""
     chosen = resolve_algorithm(source, algorithm)
     framed = struct.pack(">I", len(payload)) + payload
     if len(framed) > capacity(source, chosen, options, limits):
         from lupaxa.dead_drop.errors import CapacityError
 
-        raise CapacityError(
-            f"{source.name} can hold {capacity(source, chosen, options, limits)} bytes, not {len(framed)}."
-        )
+        raise CapacityError(f"{source.name} can hold {capacity(source, chosen, options, limits)} bytes, not {len(framed)}.")
     if chosen in {"png-lsb", "png-bitplane"}:
         return png.embed_lsb(source, destination, framed, options, algorithm=chosen)
     if chosen == "png-chunk":
@@ -400,9 +342,7 @@ def extract(path: Path, algorithm: str, options: EmbedOptions, limits: Limits) -
     return _strip_prefix(raw, limits)
 
 
-def _extract_prefixed(
-    path: Path, options: EmbedOptions, limits: Limits, reader: Callable[[Path, int, EmbedOptions], bytes]
-) -> bytes:
+def _extract_prefixed(path: Path, options: EmbedOptions, limits: Limits, reader: Callable[[Path, int, EmbedOptions], bytes]) -> bytes:
     prefix = reader(path, 4, options)
     if len(prefix) != 4:
         raise IntegrityError("Embedded length prefix is truncated.")

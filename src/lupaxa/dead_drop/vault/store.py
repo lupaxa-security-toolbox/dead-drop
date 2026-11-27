@@ -27,26 +27,10 @@ from lupaxa.dead_drop.carriers.base import EmbedOptions
 from lupaxa.dead_drop.coding.reedsolomon import decode as rs_decode
 from lupaxa.dead_drop.coding.reedsolomon import encode as rs_encode
 from lupaxa.dead_drop.crypto.kdf import KdfParams
-from lupaxa.dead_drop.errors import (
-    ArgumentError,
-    AuthenticationError,
-    CapacityError,
-    DeadDropError,
-    FragmentError,
-    IntegrityError,
-    VaultConflictError,
-)
+from lupaxa.dead_drop.errors import ArgumentError, AuthenticationError, CapacityError, DeadDropError, FragmentError, IntegrityError, VaultConflictError
 from lupaxa.dead_drop.limits import Limits
 from lupaxa.dead_drop.paths import atomic_replace
-from lupaxa.dead_drop.payload.envelope import (
-    TYPE_VAULT_BLOCK,
-    TYPE_VAULT_METADATA,
-    TYPE_VAULT_POINTER,
-    build_envelope,
-    pack_frames,
-    parse_envelope,
-    walk_frames,
-)
+from lupaxa.dead_drop.payload.envelope import TYPE_VAULT_BLOCK, TYPE_VAULT_METADATA, TYPE_VAULT_POINTER, build_envelope, pack_frames, parse_envelope, walk_frames
 from lupaxa.dead_drop.payload.package import new_id, stamp
 from lupaxa.dead_drop.redact import register_secret, wipe
 from lupaxa.dead_drop.services.conceal import CryptoChoices, open_envelope, seal
@@ -111,14 +95,7 @@ class Vault:
             if not data:
                 chunk = b""
             block_id = new_id()
-            sealed, _payload = seal(
-                chunk,
-                CryptoChoices(
-                    encrypt=True, algorithm=self.settings.encryption, key=bytes(self.master), compress="none"
-                ),
-                limits,
-                payload_id=block_id,
-            )
+            sealed, _payload = seal(chunk, CryptoChoices(encrypt=True, algorithm=self.settings.encryption, key=bytes(self.master), compress="none"), limits, payload_id=block_id)
             shards = rs_encode(sealed, data_shards=self.state["data_shards"], parity_shards=self.state["parity_shards"])
             blocks.append(
                 {
@@ -158,11 +135,7 @@ class Vault:
         parts = []
         for block_id in node["blocks"]:
             sealed = self._load_block(block_id)
-            plain = open_envelope(
-                sealed,
-                CryptoChoices(encrypt=True, algorithm=self.settings.encryption, key=bytes(self.master)),
-                limits,
-            )
+            plain = open_envelope(sealed, CryptoChoices(encrypt=True, algorithm=self.settings.encryption, key=bytes(self.master)), limits)
             if hashlib.sha256(plain).hexdigest() != self.state["blocks"][block_id]["sha256"]:
                 raise IntegrityError(f"Block {block_id} failed its content check.")
             parts.append(plain)
@@ -228,14 +201,8 @@ class Vault:
         """Return a JSON-safe index without shard bytes or keys."""
         carriers = []
         for carrier in self.state["carriers"]:
-            carriers.append(
-                {key: value for key, value in carrier.items() if key != "shards"}
-                | {"shard_count": len(carrier.get("shards", []))}
-            )
-        blocks = {
-            key: {name: value for name, value in block.items() if name != "bytes"}
-            for key, block in self.state["blocks"].items()
-        }
+            carriers.append({key: value for key, value in carrier.items() if key != "shards"} | {"shard_count": len(carrier.get("shards", []))})
+        blocks = {key: {name: value for name, value in block.items() if name != "bytes"} for key, block in self.state["blocks"].items()}
         return {
             "vault_id": self.state["vault_id"],
             "name": self.state["name"],
@@ -287,11 +254,7 @@ def create_vault(directory: Path, password: str, settings: VaultSettings, limits
         "created": stamp(),
     }
     vault = Vault(directory, settings, master, state)
-    wrapped = seal(
-        bytes(master),
-        CryptoChoices(encrypt=True, password=password, kdf=settings.kdf, algorithm=settings.encryption),
-        limits,
-    )[0]
+    wrapped = seal(bytes(master), CryptoChoices(encrypt=True, password=password, kdf=settings.kdf, algorithm=settings.encryption), limits)[0]
     state["wrapped_key"] = wrapped.hex()
     vault.commit(limits)
     reopened = open_vault(directory, password, settings.kdf, limits)
@@ -321,11 +284,7 @@ def _open_locked(directory: Path, password: str, kdf: KdfParams, limits: Limits)
         group = [item for item in discovered if item["generation"] == generation]
         sample = group[0]
         try:
-            master = open_envelope(
-                bytes.fromhex(sample["wrapped_key"]),
-                CryptoChoices(encrypt=True, password=password, kdf=kdf),
-                limits,
-            )
+            master = open_envelope(bytes.fromhex(sample["wrapped_key"]), CryptoChoices(encrypt=True, password=password, kdf=kdf), limits)
             state = json.loads(open_envelope(sample["metadata"], CryptoChoices(encrypt=True, key=master), limits))
         except AuthenticationError as exc:
             last_error = exc
@@ -333,9 +292,7 @@ def _open_locked(directory: Path, password: str, kdf: KdfParams, limits: Limits)
         _attach_shards(state, group)
         if state.get("transaction") != "committed" or not _generation_complete(state):
             continue
-        settings = VaultSettings(
-            name=state["name"], redundancy=state["parity_shards"], block_size=state["block_size"], kdf=kdf
-        )
+        settings = VaultSettings(name=state["name"], redundancy=state["parity_shards"], block_size=state["block_size"], kdf=kdf)
         return Vault(directory, settings, bytearray(master), state)
     if last_error:
         raise AuthenticationError("Authentication failed.")
@@ -364,16 +321,12 @@ def _scan(directory: Path, limits: Limits) -> list[dict[str, Any]]:
 
             _magic, _version, envelope_type, *_rest = HEADER.unpack_from(frame)
             if envelope_type == POINTER:
-                pointer = json.loads(
-                    parse_envelope(frame, key=None, max_plain_bytes=limits.max_archive_expansion_bytes).plaintext
-                )
+                pointer = json.loads(parse_envelope(frame, key=None, max_plain_bytes=limits.max_archive_expansion_bytes).plaintext)
             elif envelope_type == META:
                 metadata = frame
             elif envelope_type == BLOCK:
                 envelope = parse_envelope(frame, key=None, max_plain_bytes=limits.max_archive_expansion_bytes)
-                shards.append(
-                    {"block": envelope.payload_id.hex(), "index": envelope.fragment_index, "bytes": envelope.plaintext}
-                )
+                shards.append({"block": envelope.payload_id.hex(), "index": envelope.fragment_index, "bytes": envelope.plaintext})
         if pointer and metadata:
             found.append(
                 {
@@ -459,14 +412,7 @@ def _pointer(state: dict[str, Any], carrier: dict[str, Any]) -> bytes:
             "wrapped_key": state["wrapped_key"],
         }
     ).encode()
-    return build_envelope(
-        envelope_type=POINTER,
-        algorithm_id=0,
-        payload_id=bytes.fromhex(state["vault_id"]),
-        plaintext=payload,
-        encryption="none",
-        max_plain_bytes=len(payload) + 64,
-    )
+    return build_envelope(envelope_type=POINTER, algorithm_id=0, payload_id=bytes.fromhex(state["vault_id"]), plaintext=payload, encryption="none", max_plain_bytes=len(payload) + 64)
 
 
 def _shard_frames(carrier: dict[str, Any], state: dict[str, Any], limits: Limits) -> list[bytes]:

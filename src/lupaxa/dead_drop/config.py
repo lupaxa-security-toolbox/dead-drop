@@ -215,12 +215,7 @@ def _assign(config: Config, name: str, value: object) -> None:
     raise ArgumentError(f"Cannot apply configuration field {name}.")
 
 
-def load_config(
-    *,
-    explicit: Path | None = None,
-    profile: str | None = None,
-    project_dir: Path | None = None,
-) -> Config:
+def load_config(*, explicit: Path | None = None, profile: str | None = None, project_dir: Path | None = None) -> Config:
     """Load defaults, then global, profile, project, and explicit files."""
     config = Config(profile=profile)
     layers: list[Path] = []

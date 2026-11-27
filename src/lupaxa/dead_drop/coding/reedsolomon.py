@@ -54,13 +54,7 @@ def encode(payload: bytes, *, data_shards: int, parity_shards: int) -> list[byte
     return [bytes(piece) for piece in data + parity]
 
 
-def decode(
-    shards: list[bytes | None],
-    *,
-    data_shards: int,
-    parity_shards: int,
-    payload_length: int,
-) -> bytes:
+def decode(shards: list[bytes | None], *, data_shards: int, parity_shards: int, payload_length: int) -> bytes:
     """Reconstruct the original payload from any ``data_shards`` shards."""
     shard_parameters(data_shards, parity_shards)
     if len(shards) != data_shards + parity_shards:

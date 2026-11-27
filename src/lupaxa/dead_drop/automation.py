@@ -14,29 +14,13 @@ from lupaxa.dead_drop.carriers.base import EmbedOptions
 from lupaxa.dead_drop.crypto.kdf import KdfParams
 from lupaxa.dead_drop.errors import ArgumentError, CapacityError, IntegrityError
 from lupaxa.dead_drop.limits import Limits
-from lupaxa.dead_drop.services.conceal import (
-    CryptoChoices,
-    DistributionChoices,
-    distribute,
-    hide_into,
-    open_envelope,
-    prepare_package,
-    seal,
-)
+from lupaxa.dead_drop.services.conceal import CryptoChoices, DistributionChoices, distribute, hide_into, open_envelope, prepare_package, seal
 
 STRATEGIES = ("capacity", "low-distortion", "spread", "fewest-files", "robustness", "balanced", "custom")
 PATH_FIELDS = ("input.path", "carriers.directory", "output.directory")
 
 
-def plan_payload(
-    payload: Path,
-    carriers: list[Path],
-    *,
-    strategy: str,
-    distribution: DistributionChoices,
-    limits: Limits,
-    options: EmbedOptions,
-) -> dict[str, Any]:
+def plan_payload(payload: Path, carriers: list[Path], *, strategy: str, distribution: DistributionChoices, limits: Limits, options: EmbedOptions) -> dict[str, Any]:
     """Choose carriers without modifying them."""
     if strategy not in STRATEGIES:
         raise ArgumentError(f"Unknown planning strategy {strategy!r}.")
@@ -121,9 +105,7 @@ def _expand_paths(table: dict[str, Any]) -> None:
             node[key] = os.path.expandvars(node[key]) if "${" in node[key] else node[key]
 
 
-def execute_plan(
-    path: Path, limits: Limits, *, password: str, output: Path, kdf: KdfParams | None = None
-) -> dict[str, Any]:
+def execute_plan(path: Path, limits: Limits, *, password: str, output: Path, kdf: KdfParams | None = None) -> dict[str, Any]:
     """Revalidate a saved plan and embed it. A changed carrier is a hard failure."""
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert_plan_fresh(saved)
@@ -138,11 +120,7 @@ def execute_plan(
         outputs,
         prepare_package(Path(saved["payload_path"]), None, limits),
         choices=CryptoChoices(encrypt=True, password=password, kdf=kdf or KdfParams()),
-        distribution=DistributionChoices(
-            mode="erasure-coded",
-            data_shards=int(redundancy["data_shards"]),
-            parity_shards=int(redundancy["parity_shards"]),
-        ),
+        distribution=DistributionChoices(mode="erasure-coded", data_shards=int(redundancy["data_shards"]), parity_shards=int(redundancy["parity_shards"])),
         options=EmbedOptions(),
         limits=limits,
     )
@@ -172,9 +150,7 @@ def write_slots(carrier: Path, output: Path, slots: list[dict[str, Any]], limits
     embed(carrier, output, blob, "auto", EmbedOptions(), limits)
 
 
-def run_recipe(
-    path: Path, limits: Limits, *, password: str, dry_run: bool, kdf: KdfParams | None = None
-) -> dict[str, Any]:
+def run_recipe(path: Path, limits: Limits, *, password: str, dry_run: bool, kdf: KdfParams | None = None) -> dict[str, Any]:
     """Validate and run one recipe."""
     recipe = load_recipe(path)
     operation = recipe["recipe"]["operation"]
@@ -195,35 +171,16 @@ def run_recipe(
     if operation == "hide":
         if not carriers:
             raise CapacityError("The recipe did not find any carriers.")
-        return hide_into(
-            carriers[0],
-            output / carriers[0].name,
-            prepare_package(payload, None, limits),
-            choices=choices,
-            options=EmbedOptions(),
-            limits=limits,
-        )
+        return hide_into(carriers[0], output / carriers[0].name, prepare_package(payload, None, limits), choices=choices, options=EmbedOptions(), limits=limits)
     if operation != "distribute":
         raise ArgumentError(f"Recipe operation {operation!r} is valid but must be run with its own command.")
     dist = recipe.get("distribution", {})
-    distribution = DistributionChoices(
-        mode=dist.get("strategy", "erasure-coded"),
-        data_shards=int(dist.get("data_shards", 1)),
-        parity_shards=int(dist.get("parity_shards", 0)),
-    )
+    distribution = DistributionChoices(mode=dist.get("strategy", "erasure-coded"), data_shards=int(dist.get("data_shards", 1)), parity_shards=int(dist.get("parity_shards", 0)))
     outputs = [output / carrier.name for carrier in carriers[: distribution.data_shards + distribution.parity_shards]]
     chosen = carriers[: len(outputs)]
     if not chosen:
         raise CapacityError("The recipe did not find any carriers.")
-    result = distribute(
-        chosen,
-        outputs,
-        prepare_package(payload, None, limits),
-        choices=choices,
-        distribution=distribution,
-        options=EmbedOptions(),
-        limits=limits,
-    )
+    result = distribute(chosen, outputs, prepare_package(payload, None, limits), choices=choices, distribution=distribution, options=EmbedOptions(), limits=limits)
     result.pop("package", None)
     return result
 
@@ -251,9 +208,7 @@ def create_challenge(output: Path, *, difficulty: str, seed: str) -> dict[str, A
 
     def _hide_in_place(path: Path, algorithm: str) -> None:
         temporary = path.with_name(path.name + ".part")
-        hide_into(
-            path, temporary, package, choices=choices, options=EmbedOptions(), limits=Limits(), algorithm=algorithm
-        )
+        hide_into(path, temporary, package, choices=choices, options=EmbedOptions(), limits=Limits(), algorithm=algorithm)
         temporary.replace(path)
 
     carriers: list[str] = []
@@ -270,15 +225,7 @@ def create_challenge(output: Path, *, difficulty: str, seed: str) -> dict[str, A
             Image.new("RGB", (140, 140), (index, 30, 50)).save(path)
             paths.append(path)
         outs = [output / f"shared-{index}.png" for index in range(2)]
-        distribute(
-            paths,
-            outs,
-            package,
-            choices=choices,
-            distribution=DistributionChoices(data_shards=1, parity_shards=1),
-            options=EmbedOptions(),
-            limits=Limits(),
-        )
+        distribute(paths, outs, package, choices=choices, distribution=DistributionChoices(data_shards=1, parity_shards=1), options=EmbedOptions(), limits=Limits())
         for path in paths:
             path.unlink()
         carriers.extend(path.name for path in outs)

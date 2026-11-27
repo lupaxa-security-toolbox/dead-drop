@@ -15,15 +15,7 @@ from lupaxa.dead_drop.crypto.kdf import KdfParams
 from lupaxa.dead_drop.crypto.shamir import combine_shares, split_secret
 from lupaxa.dead_drop.errors import AuthenticationError, IntegrityError
 from lupaxa.dead_drop.limits import Limits
-from lupaxa.dead_drop.services.conceal import (
-    CryptoChoices,
-    DistributionChoices,
-    distribute,
-    hide_into,
-    prepare_package,
-    recover_from,
-    reveal_from,
-)
+from lupaxa.dead_drop.services.conceal import CryptoChoices, DistributionChoices, distribute, hide_into, prepare_package, recover_from, reveal_from
 from lupaxa.dead_drop.version import __version__, get_version
 
 runner = CliRunner()
@@ -57,12 +49,7 @@ def test_png_round_trip(tmp_path: Path) -> None:
     revealed = reveal_from(output, choices=choices, options=EmbedOptions(), limits=Limits())
     assert revealed["verified"] is True
     with pytest.raises(AuthenticationError):
-        reveal_from(
-            output,
-            choices=CryptoChoices(encrypt=True, password="wrong-password-value", kdf=FAST),
-            options=EmbedOptions(),
-            limits=Limits(),
-        )
+        reveal_from(output, choices=CryptoChoices(encrypt=True, password="wrong-password-value", kdf=FAST), options=EmbedOptions(), limits=Limits())
 
 
 def test_erasure_and_shamir(tmp_path: Path) -> None:
@@ -79,15 +66,7 @@ def test_erasure_and_shamir(tmp_path: Path) -> None:
     package = prepare_package(None, b"distributed", Limits())
     outs = [tmp_path / f"out-{index}.png" for index in range(3)]
     choices = CryptoChoices(encrypt=True, password="correct-horse-battery", kdf=FAST)
-    distribute(
-        carriers,
-        outs,
-        package,
-        choices=choices,
-        distribution=DistributionChoices(data_shards=2, parity_shards=1),
-        options=EmbedOptions(),
-        limits=Limits(),
-    )
+    distribute(carriers, outs, package, choices=choices, distribution=DistributionChoices(data_shards=2, parity_shards=1), options=EmbedOptions(), limits=Limits())
     recovered = recover_from(outs[:2], choices=choices, options=EmbedOptions(), limits=Limits())
     assert recovered["package"] == package
 

@@ -50,9 +50,4 @@ def test_bmp_wav_text_svg_zip(tmp_path: Path) -> None:
         revealed = reveal_from(output, choices=_choices(), options=EmbedOptions(), limits=Limits())
         assert revealed["verified"] is True
         with pytest.raises(AuthenticationError):
-            reveal_from(
-                output,
-                choices=CryptoChoices(encrypt=True, password="wrong-password-value", kdf=FAST),
-                options=EmbedOptions(),
-                limits=Limits(),
-            )
+            reveal_from(output, choices=CryptoChoices(encrypt=True, password="wrong-password-value", kdf=FAST), options=EmbedOptions(), limits=Limits())

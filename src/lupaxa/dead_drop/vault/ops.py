@@ -19,10 +19,7 @@ from lupaxa.dead_drop.vault.store import Vault, _carrier_files, _default_algorit
 def listing(vault: Vault, directory: str = "") -> list[dict[str, Any]]:
     """List one directory level."""
     node = vault.state["tree"] if not directory else _require(vault.state["tree"], directory, "dir")
-    return [
-        {"name": name, "type": child["type"], "size": child.get("size", 0)}
-        for name, child in sorted(node["entries"].items())
-    ]
+    return [{"name": name, "type": child["type"], "size": child.get("size", 0)} for name, child in sorted(node["entries"].items())]
 
 
 def tree_lines(vault: Vault) -> list[str]:
@@ -205,12 +202,8 @@ def backup(vault: Vault, destination: Path, password: str, kdf: KdfParams, limit
                 "hex": vault.get(item["path"], limits).hex(),
             }
         )
-    body = json.dumps(
-        {"format": 1, "vault_id": vault.state["vault_id"], "name": vault.state["name"], "files": files}
-    ).encode()
-    blob, _ident = seal(
-        body, CryptoChoices(encrypt=True, password=password, kdf=kdf, algorithm=vault.settings.encryption), limits
-    )
+    body = json.dumps({"format": 1, "vault_id": vault.state["vault_id"], "name": vault.state["name"], "files": files}).encode()
+    blob, _ident = seal(body, CryptoChoices(encrypt=True, password=password, kdf=kdf, algorithm=vault.settings.encryption), limits)
     destination.write_bytes(b"DDBK" + blob)
 
 
@@ -256,10 +249,7 @@ def destroy(vault: Vault, limits: Limits) -> dict[str, str]:
         embed(source, temporary, b"", carrier["algorithm"], EmbedOptions(), limits)
         temporary.replace(dest)
     return {
-        "warning": (
-            "Carrier embeddings were replaced. This does not guarantee secure deletion "
-            "from SSDs, backups, or earlier copies."
-        ),
+        "warning": ("Carrier embeddings were replaced. This does not guarantee secure deletion from SSDs, backups, or earlier copies."),
     }
 
 

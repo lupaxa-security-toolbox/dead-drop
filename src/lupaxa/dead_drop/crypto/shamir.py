@@ -87,19 +87,7 @@ class Share:
 
     def serialise(self) -> bytes:
         """Encode the share, including its checksum."""
-        body = (
-            _HEADER.pack(
-                SHARE_MAGIC,
-                SHARE_VERSION,
-                self.set_id,
-                self.threshold,
-                self.share_count,
-                self.index,
-                self.payload_length,
-                len(self.values),
-            )
-            + self.values
-        )
+        body = _HEADER.pack(SHARE_MAGIC, SHARE_VERSION, self.set_id, self.threshold, self.share_count, self.index, self.payload_length, len(self.values)) + self.values
         digest = hashlib.sha256(body).digest()
         return body + digest
 

@@ -83,15 +83,7 @@ def encrypt(key: bytes, nonce_prefix: bytes, plaintext: bytes, aad: bytes, algor
     return b"".join(parts)
 
 
-def decrypt(
-    key: bytes,
-    nonce_prefix: bytes,
-    body: bytes,
-    aad: bytes,
-    algorithm: str,
-    *,
-    max_plain_bytes: int,
-) -> bytes:
+def decrypt(key: bytes, nonce_prefix: bytes, body: bytes, aad: bytes, algorithm: str, *, max_plain_bytes: int) -> bytes:
     """Decrypt a chunked body and enforce the expansion limit."""
     cipher = _cipher(algorithm, key)
     if len(body) < _HEADER.size:

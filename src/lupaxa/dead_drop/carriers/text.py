@@ -13,10 +13,7 @@ from typing import Any
 from lupaxa.dead_drop.carriers.base import EmbedOptions, EmbedReport
 from lupaxa.dead_drop.errors import CapacityError, IntegrityError, UnsupportedError
 
-WARNING = (
-    "Text concealment is vulnerable to formatting, Unicode normalisation, "
-    "copying, and editor transformations. It is not a durable store."
-)
+WARNING = "Text concealment is vulnerable to formatting, Unicode normalisation, copying, and editor transformations. It is not a durable store."
 ZW0 = "\u200b"
 ZW1 = "\u200c"
 MARKER = "\u2060\u2060\u2063"

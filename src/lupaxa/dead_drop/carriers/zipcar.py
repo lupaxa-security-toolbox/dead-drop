@@ -36,11 +36,7 @@ def inspect_zip(path: Path, limits: Limits) -> dict[str, Any]:
         for info in archive.infolist():
             if _unsafe(info.filename):
                 raise FilesystemError(f"ZIP member {info.filename!r} has an unsafe path.")
-            if (
-                info.compress_size
-                and info.file_size / info.compress_size > limits.max_compression_ratio
-                and info.file_size > 1024 * 1024
-            ):
+            if info.compress_size and info.file_size / info.compress_size > limits.max_compression_ratio and info.file_size > 1024 * 1024:
                 raise LimitError(f"ZIP member {info.filename!r} looks like a decompression bomb.")
             total += info.file_size
             limits.check_expansion(total)
@@ -58,9 +54,7 @@ def embed(source: Path, destination: Path, payload: bytes, options: EmbedOptions
     if _unsafe(entry):
         raise FilesystemError(f"Refusing payload entry name {entry!r}.")
     if entry in info["entries"] and not options.force:
-        raise FilesystemError(
-            f"ZIP already contains {entry}. Choose another slot name or pass --force via the entry option."
-        )
+        raise FilesystemError(f"ZIP already contains {entry}. Choose another slot name or pass --force via the entry option.")
     with zipfile.ZipFile(source) as incoming, zipfile.ZipFile(destination, "w") as outgoing:
         for member in incoming.infolist():
             if member.filename == entry:
@@ -76,16 +70,7 @@ def embed(source: Path, destination: Path, payload: bytes, options: EmbedOptions
         "ZIP embedding is container-based concealment, not statistically covert steganography.",
         *options.warnings,
     ]
-    return EmbedReport(
-        "zip-entry",
-        "container",
-        len(payload),
-        limits.max_container_payload_bytes,
-        1,
-        {"mse": None},
-        warnings,
-        str(destination),
-    )
+    return EmbedReport("zip-entry", "container", len(payload), limits.max_container_payload_bytes, 1, {"mse": None}, warnings, str(destination))
 
 
 def extract(path: Path, entry: str, limits: Limits) -> bytes:

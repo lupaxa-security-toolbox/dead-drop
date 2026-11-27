@@ -229,14 +229,7 @@ def parse_envelope(blob: bytes, *, key: bytes | None, max_plain_bytes: int) -> E
         if len(nonce) != 12:
             raise IntegrityError("Encrypted envelope nonce must be 12 bytes.")
         try:
-            plaintext = decrypt(
-                key,
-                nonce[:8],
-                body,
-                prefix,
-                ENC_NAMES[encryption_id],
-                max_plain_bytes=max_plain_bytes,
-            )
+            plaintext = decrypt(key, nonce[:8], body, prefix, ENC_NAMES[encryption_id], max_plain_bytes=max_plain_bytes)
         except Exception as exc:
             from lupaxa.dead_drop.errors import AuthenticationError
 

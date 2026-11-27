@@ -146,9 +146,7 @@ def capacity_bits(path: Path, options: EmbedOptions) -> int:
         image.close()
 
 
-def _slot(
-    index: int, width: int, height: int, channel_count: int, plane_count: int, placement: str
-) -> tuple[int, int, int, int]:
+def _slot(index: int, width: int, height: int, channel_count: int, plane_count: int, placement: str) -> tuple[int, int, int, int]:
     if placement == "distributed":
         block = width * height
         which = index // block
@@ -178,9 +176,7 @@ def embed_lsb(source: Path, destination: Path, payload: bytes, options: EmbedOpt
 
     def set_bit(index: int, bit: int) -> None:
         nonlocal changed
-        x, y, channel, plane_index = _slot(
-            index, width, height, len(channels), len(options.bit_planes), options.placement
-        )
+        x, y, channel, plane_index = _slot(index, width, height, len(channels), len(options.bit_planes), options.placement)
         plane = options.bit_planes[plane_index]
         raw = pixels[x, y]
         if not isinstance(raw, tuple):
@@ -199,16 +195,7 @@ def embed_lsb(source: Path, destination: Path, payload: bytes, options: EmbedOpt
     validate_png(destination)
     with Image.open(source) as before, Image.open(destination) as after:
         metrics = _metrics(before, after)
-    return EmbedReport(
-        algorithm,
-        "covert",
-        len(payload),
-        usable_bytes(total, options),
-        changed,
-        metrics,
-        list(options.warnings),
-        str(destination),
-    )
+    return EmbedReport(algorithm, "covert", len(payload), usable_bytes(total, options), changed, metrics, list(options.warnings), str(destination))
 
 
 def extract_lsb(path: Path, size: int, options: EmbedOptions) -> bytes:
@@ -223,9 +210,7 @@ def extract_lsb(path: Path, size: int, options: EmbedOptions) -> bytes:
             raise IntegrityError("PNG pixel buffer could not be loaded.")
 
         def get_bit(index: int) -> int:
-            x, y, channel, plane_index = _slot(
-                index, width, height, len(channels), len(options.bit_planes), options.placement
-            )
+            x, y, channel, plane_index = _slot(index, width, height, len(channels), len(options.bit_planes), options.placement)
             plane = options.bit_planes[plane_index]
             raw = pixels[x, y]
             if not isinstance(raw, tuple):
@@ -255,16 +240,7 @@ def embed_chunk(source: Path, destination: Path, payload: bytes, options: EmbedO
     kept.insert(-1, (PAYLOAD_CHUNK, payload))
     destination.write_bytes(write_chunks(kept))
     validate_png(destination)
-    return EmbedReport(
-        "png-chunk",
-        "container",
-        len(payload),
-        2**31,
-        0,
-        {"mse": 0.0, "psnr": None, "ssim": 1.0},
-        ["PNG chunk embedding is overt container storage."],
-        str(destination),
-    )
+    return EmbedReport("png-chunk", "container", len(payload), 2**31, 0, {"mse": 0.0, "psnr": None, "ssim": 1.0}, ["PNG chunk embedding is overt container storage."], str(destination))
 
 
 def extract_chunk(path: Path) -> bytes:
@@ -280,13 +256,7 @@ def _save_preserving(source: Path, image: Image.Image, destination: Path, extra:
     image.save(buffer, format="PNG")
     new_chunks = read_chunks(buffer.getvalue())
     old_chunks = read_chunks(source.read_bytes())
-    preserved = [
-        (name, data)
-        for name, data in old_chunks
-        if name[:1].islower()
-        and name not in {NONCE_CHUNK, PAYLOAD_CHUNK, "idat"}
-        and name not in {item[0] for item in new_chunks}
-    ]
+    preserved = [(name, data) for name, data in old_chunks if name[:1].islower() and name not in {NONCE_CHUNK, PAYLOAD_CHUNK, "idat"} and name not in {item[0] for item in new_chunks}]
     merged: list[tuple[str, bytes]] = []
     for name, data in new_chunks:
         if name == "IEND":
@@ -319,7 +289,4 @@ def _ssim(left: np.ndarray, right: np.ndarray) -> float:
     var_left = float(left.var())
     var_right = float(right.var())
     cov = float(((left - mu_left) * (right - mu_right)).mean())
-    return float(
-        ((2 * mu_left * mu_right + c1) * (2 * cov + c2))
-        / ((mu_left**2 + mu_right**2 + c1) * (var_left + var_right + c2))
-    )
+    return float(((2 * mu_left * mu_right + c1) * (2 * cov + c2)) / ((mu_left**2 + mu_right**2 + c1) * (var_left + var_right + c2)))

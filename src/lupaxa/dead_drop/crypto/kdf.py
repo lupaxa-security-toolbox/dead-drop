@@ -44,13 +44,7 @@ def derive_key(password: str, salt: bytes, params: KdfParams) -> bytes:
         return cast(
             bytes,
             hash_secret_raw(
-                secret=password.encode("utf-8"),
-                salt=salt,
-                time_cost=params.time_cost,
-                memory_cost=params.memory_kib,
-                parallelism=params.parallelism,
-                hash_len=params.hash_len,
-                type=Type.ID,
+                secret=password.encode("utf-8"), salt=salt, time_cost=params.time_cost, memory_cost=params.memory_kib, parallelism=params.parallelism, hash_len=params.hash_len, type=Type.ID
             ),
         )
     except Exception as exc:
